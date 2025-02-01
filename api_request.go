@@ -10,7 +10,7 @@ type RequestData struct {
 	Query      url.Values `json:"query,omitempty"`
 	Form       Params     `json:"form,omitempty"`
 	WWWForm    Params     `json:"WWWForm,omitempty"`
-	PostBody   Params     `json:"post_body,omitempty"`
+	PostBody   any        `json:"postBody,omitempty"`
 	Header     Params     `json:"header,omitempty"`
 	Debug      bool       `json:"debug"`
 }

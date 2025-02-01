@@ -29,7 +29,7 @@ func (a *Apic) Headers() Params {
 	return nil
 }
 
-func (a *Apic) PostBody() Params {
+func (a *Apic) PostBody() any {
 	return nil
 }
 

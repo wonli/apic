@@ -11,7 +11,7 @@ type Api interface {
 	Path() string                                  // Request path.
 	Query() url.Values                             // URL query parameters.
 	Headers() Params                               // Headers required for the request.
-	PostBody() Params                              // Request parameters.
+	PostBody() any                                 // Request parameters.
 	FormData() Params                              // Form data as map[string]string.
 	WWWFormData() Params                           // Form data as map[string]string.
 	Setup(api Api, op *Options) (Api, error)       // Setup for the API.

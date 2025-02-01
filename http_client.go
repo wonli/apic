@@ -133,13 +133,7 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 
 	//set postBody
 	if op.PostBody != nil {
-		if id.Request.PostBody == nil {
-			id.Request.PostBody = op.PostBody
-		} else {
-			for key, val := range op.PostBody {
-				id.Request.PostBody[key] = val
-			}
-		}
+		id.Request.PostBody = op.PostBody
 	}
 
 	//set header
