@@ -1,9 +1,12 @@
 package apic
 
 import (
+	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/guonaihong/gout"
@@ -191,6 +194,38 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	}
 
 	id.Response = &ResponseData{}
+	if id.Stream {
+		response, err2 := client.Code(&id.Response.HttpStatus).
+			BindHeader(&id.Response.Header).Response()
+
+		if err2 != nil {
+			return nil, err2
+		}
+
+		// 处理 text/event-stream
+		contentType := response.Header.Get("Content-Type")
+		if !strings.Contains(contentType, "text/event-stream") {
+			return nil, fmt.Errorf("invalid status code: %d, content-type: %s", response.StatusCode, contentType)
+		}
+
+		defer response.Body.Close()
+
+		buf := bufio.NewReader(response.Body)
+		for {
+			line, err := buf.ReadString('\n')
+			if err != nil && err != io.EOF {
+				return nil, err
+			}
+
+			api.ReceiveEvent(strings.TrimSpace(line))
+			if err == io.EOF {
+				break
+			}
+		}
+
+		return id.Response, nil
+	}
+
 	err = client.Code(&id.Response.HttpStatus).
 		BindHeader(&id.Response.Header).BindBody(&id.Response.Data).Do()
 	if err != nil {

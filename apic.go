@@ -11,6 +11,7 @@ import (
 // Introducing this in business logic can avoid writing too much boilerplate code.
 type Apic struct {
 	Api
+	eventCallback func(data string)
 }
 
 func (a *Apic) Url() string {
@@ -63,6 +64,16 @@ func (a *Apic) OnRequest() error {
 
 func (a *Apic) OnResponse(resp []byte) (*ResponseData, error) {
 	return &ResponseData{Data: resp}, nil
+}
+
+func (a *Apic) OnEvent(callback func(data string)) {
+	a.eventCallback = callback
+}
+
+func (a *Apic) ReceiveEvent(data string) {
+	if a.eventCallback != nil {
+		a.eventCallback(data)
+	}
 }
 
 func (a *Apic) OnHttpStatusError(code int, resp []byte) error {

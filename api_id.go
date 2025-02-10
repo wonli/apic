@@ -3,6 +3,7 @@ package apic
 type ApiId struct {
 	Name     string
 	Client   Api
+	Stream   bool
 	Request  *RequestData
 	Response *ResponseData
 }

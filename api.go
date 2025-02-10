@@ -21,4 +21,6 @@ type Api interface {
 	OnRequest() error                              // Handle request data.
 	OnHttpStatusError(code int, resp []byte) error // Handle HTTP status errors.
 	OnResponse(resp []byte) (*ResponseData, error) // Process response data.
+	OnEvent(callback func(data string))            // 注册事件回调函数
+	ReceiveEvent(data string)                      // 注册收到事件时的处理方法
 }
