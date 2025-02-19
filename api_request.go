@@ -8,8 +8,8 @@ type RequestData struct {
 	ApiId      string     `json:"apiId"`
 	Path       string     `json:"path,omitempty"`
 	Query      url.Values `json:"query,omitempty"`
-	Form       Params     `json:"form,omitempty"`
-	WWWForm    Params     `json:"WWWForm,omitempty"`
+	Form       any        `json:"form,omitempty"`
+	WWWForm    any        `json:"WWWForm,omitempty"`
 	PostBody   any        `json:"postBody,omitempty"`
 	Header     Params     `json:"header,omitempty"`
 	Debug      bool       `json:"debug"`

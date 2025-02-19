@@ -34,16 +34,16 @@ func (a *Apic) PostBody() any {
 	return nil
 }
 
-func (a *Apic) FormData() Params {
+func (a *Apic) FormData() any {
 	return nil
 }
 
-func (a *Apic) WWWFormData() Params {
+func (a *Apic) WWWFormData() any {
 	return nil
 }
 
-func (a *Apic) Setup(api Api, op *Options) (Api, error) {
-	return api, nil
+func (a *Apic) Setup() (Api, error) {
+	return a.Api, nil
 }
 
 func (a *Apic) HttpMethod() HttpMethod {

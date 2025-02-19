@@ -94,7 +94,15 @@ func (a *ApiClients) CallFunc(id *ApiId, op *Options, callback func(a *Api, data
 }
 
 func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
-	api := id.Client
+	api, err := id.Client.Setup()
+	if err != nil {
+		return nil, err
+	}
+
+	if api == nil {
+		api = id.Client
+	}
+
 	if id.Request == nil {
 		id.Request = &RequestData{}
 	}
@@ -105,12 +113,6 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 
 	id.Request.ApiId = id.Name
 	id.Request.InitFromApiClient(id.Client)
-
-	//setup
-	api, err := api.Setup(id.Client, op)
-	if err != nil {
-		return nil, err
-	}
 
 	err = api.UseContext(a.ctx)
 	if err != nil {

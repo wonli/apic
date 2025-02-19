@@ -12,9 +12,9 @@ type Api interface {
 	Query() url.Values                             // URL query parameters.
 	Headers() Params                               // Headers required for the request.
 	PostBody() any                                 // Request parameters.
-	FormData() Params                              // Form data as map[string]string.
-	WWWFormData() Params                           // Form data as map[string]string.
-	Setup(api Api, op *Options) (Api, error)       // Setup for the API.
+	FormData() any                                 // Form data as map[string]string.
+	WWWFormData() any                              // Form data as map[string]string.
+	Setup() (Api, error)                           // Setup for the API.
 	HttpMethod() HttpMethod                        // HTTP method of the request.
 	Debug() bool                                   // Whether to run in debug mode.
 	UseContext(ctx context.Context) error          // Use context.
