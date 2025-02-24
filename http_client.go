@@ -178,7 +178,10 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 		client.SetProxy(a.proxy)
 	}
 
-	client.Debug(id.Request.Debug)
+	if id.Request.Debug || op.Debug {
+		client.Debug(true)
+	}
+
 	if id.Request.Form != nil {
 		client.SetForm(id.Request.Form)
 	} else if id.Request.WWWForm != nil {
@@ -192,7 +195,12 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	}
 
 	if id.Request.Header != nil {
-		client.SetHeader(id.Request.Header)
+		if op.UseRawHeader {
+			client.NoAutoContentType()
+			client.SetHeaderRaw(id.Request.Header)
+		} else {
+			client.SetHeader(id.Request.Header)
+		}
 	}
 
 	id.Response = &ResponseData{}
