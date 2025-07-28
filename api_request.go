@@ -1,6 +1,8 @@
 package apic
 
-import "net/url"
+import (
+	"net/url"
+)
 
 type RequestData struct {
 	Url        string     `json:"url"`

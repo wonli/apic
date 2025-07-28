@@ -3,6 +3,7 @@ package apic
 import (
 	"context"
 	"encoding/json"
+	"github.com/guonaihong/gout/dataflow"
 	"log"
 	"net/url"
 )
@@ -39,6 +40,10 @@ func (a *Apic) FormData() any {
 }
 
 func (a *Apic) WWWFormData() any {
+	return nil
+}
+
+func (a *Apic) SetData(c *dataflow.DataFlow) error {
 	return nil
 }
 

@@ -2,6 +2,7 @@ package apic
 
 import (
 	"context"
+	"github.com/guonaihong/gout/dataflow"
 	"net/url"
 )
 
@@ -14,6 +15,7 @@ type Api interface {
 	PostBody() any                                 // Request parameters.
 	FormData() any                                 // Form data as map[string]string.
 	WWWFormData() any                              // Form data as map[string]string.
+	SetData(c *dataflow.DataFlow) error            // SetData
 	Setup() (Api, error)                           // Setup for the API.
 	HttpMethod() HttpMethod                        // HTTP method of the request.
 	Debug() bool                                   // Whether to run in debug mode.

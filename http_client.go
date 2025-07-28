@@ -203,6 +203,11 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 		}
 	}
 
+	err = id.Client.SetData(client)
+	if err != nil {
+		return nil, err
+	}
+
 	id.Response = &ResponseData{}
 	if id.Stream {
 		response, err2 := client.Code(&id.Response.HttpStatus).
