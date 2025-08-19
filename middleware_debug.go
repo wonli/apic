@@ -163,17 +163,17 @@ func logResponse(resp *http.Response) {
 		protoVersion = resp.Proto
 	}
 
-	fmt.Printf("%s\n", colorize(fmt.Sprintf("< %s %d %s", protoVersion, resp.StatusCode, http.StatusText(resp.StatusCode)), statusColor))
+	fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s %d %s", protoVersion, resp.StatusCode, http.StatusText(resp.StatusCode)), statusColor))
 
 	// 输出响应头
 	for key, values := range resp.Header {
 		for _, value := range values {
-			fmt.Printf("%s\n", colorize(fmt.Sprintf("< %s: %s", key, value), ColorPurple))
+			fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s: %s", key, value), ColorPurple))
 		}
 	}
 
 	// 输出空行分隔响应头和响应体
-	fmt.Printf("%s\n", colorize("< ", statusColor))
+	fmt.Printf("%s\n", colorize("> ", statusColor))
 
 	// 读取并打印响应体
 	if resp.Body != nil {
