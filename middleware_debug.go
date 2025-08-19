@@ -2,6 +2,7 @@ package apic
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -70,6 +71,20 @@ func colorize(text, color string) string {
 	return text
 }
 
+// isJSONContent 检查内容类型是否为JSON
+func isJSONContent(contentType string) bool {
+	return strings.Contains(strings.ToLower(contentType), "application/json")
+}
+
+// formatJSON 格式化JSON字符串
+func formatJSON(data []byte) string {
+	var prettyJSON bytes.Buffer
+	if err := json.Indent(&prettyJSON, data, "", "  "); err != nil {
+		return string(data) // 格式化失败时返回原始数据
+	}
+	return prettyJSON.String()
+}
+
 // logDebugStart 输出调试开始标记
 func logDebugStart() {
 	fmt.Printf("%s\n", colorize("---------- DEBUG START ----------", ColorCyan))
@@ -108,7 +123,21 @@ func logRequest(req *http.Request) {
 			// 提取请求体部分
 			parts := strings.Split(string(body), "\r\n\r\n")
 			if len(parts) > 1 {
-				fmt.Printf("%s\n", colorize(parts[1], ColorYellow))
+				requestBody := parts[1]
+				// 检查是否为JSON内容并格式化
+				contentType := req.Header.Get("Content-Type")
+				if isJSONContent(contentType) {
+					formattedJSON := formatJSON([]byte(requestBody))
+					// 按行输出格式化的JSON
+					lines := strings.Split(formattedJSON, "\n")
+					for _, line := range lines {
+						if line != "" {
+							fmt.Printf("%s\n", colorize(fmt.Sprintf("< %s", line), ColorYellow))
+						}
+					}
+				} else {
+					fmt.Printf("%s\n", colorize(requestBody, ColorYellow))
+				}
 			}
 		}
 	}
@@ -150,11 +179,24 @@ func logResponse(resp *http.Response) {
 	if resp.Body != nil {
 		body, err := io.ReadAll(resp.Body)
 		if err == nil && len(body) > 0 {
-			// 按行打印响应体内容
-			lines := strings.Split(string(body), "\n")
-			for _, line := range lines {
-				if line != "" || len(lines) == 1 {
-					fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s", line), ColorGreen))
+			// 检查是否为JSON内容并格式化
+			contentType := resp.Header.Get("Content-Type")
+			if isJSONContent(contentType) {
+				formattedJSON := formatJSON(body)
+				// 按行输出格式化的JSON
+				lines := strings.Split(formattedJSON, "\n")
+				for _, line := range lines {
+					if line != "" {
+						fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s", line), ColorGreen))
+					}
+				}
+			} else {
+				// 按行打印响应体内容
+				lines := strings.Split(string(body), "\n")
+				for _, line := range lines {
+					if line != "" || len(lines) == 1 {
+						fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s", line), ColorGreen))
+					}
 				}
 			}
 		}
