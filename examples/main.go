@@ -5,16 +5,32 @@ import (
 	"log"
 	"net/url"
 
-	"github.com/wonli/apic"
+	"github.com/wonli/apic/v2"
 )
 
 func main() {
 	musicApi := &apic.ApiId{
-		Name:   "music",
-		Client: &RandMusicApi{},
+		Name: "music",
+		Client: &RandMusicApi{
+			Apic: &apic.Apic{},
+		},
 	}
 
-	api, err := apic.Init().CallApi(musicApi, nil)
+	// 使用中间件的调用链
+	api, err := apic.Init().
+		Use(apic.MiddlewareFunc(func(ctx *apic.Context) {
+			// ctx.Next() 前是请求处理
+			log.Printf("[MIDDLEWARE] 发送请求: %s %s", ctx.Request.Method, ctx.Request.URL.String())
+
+			// 调用下一个中间件或实际的HTTP请求
+			ctx.Next()
+
+			// ctx.Next() 后是响应处理
+			if ctx.Response != nil {
+				log.Printf("[MIDDLEWARE] 收到响应: %d", ctx.Response.StatusCode)
+			}
+		})).
+		CallApi(musicApi, nil)
 	if err != nil {
 		log.Panicln(err.Error())
 		return
@@ -24,12 +40,15 @@ func main() {
 	if api.Data != nil {
 		err = json.Unmarshal(api.Data, &res)
 		if err != nil {
-			log.Panicln(err.Error())
+			log.Printf("JSON解析失败: %s", err.Error())
+			return
 		}
-	}
 
-	log.Println(res.Data.Name)
-	log.Println(res.Data.Url)
+		log.Println(res.Data.Name)
+		log.Println(res.Data.Url)
+	} else {
+		log.Println("API返回了空响应")
+	}
 }
 
 type ResponseData struct {
@@ -51,13 +70,11 @@ func (m *RandMusicApi) Url() string {
 }
 
 func (m *RandMusicApi) Path() string {
-	return "/api/rand.music"
+	return "/api/visitor.info"
 }
 
 func (m *RandMusicApi) Query() url.Values {
 	u := url.Values{}
-	u.Add("sort", "热歌榜")
-	u.Add("format", "json")
 
 	return u
 }
