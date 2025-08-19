@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
-
-	"github.com/guonaihong/gout"
-	"github.com/guonaihong/gout/dataflow"
 )
 
 var Apis *ApiClients
@@ -18,9 +16,10 @@ var once sync.Once
 
 // ApiClients api clients list
 type ApiClients struct {
-	ctx   context.Context
-	proxy string
-	named map[string]*ApiId
+	ctx         context.Context
+	proxy       string
+	named       map[string]*ApiId
+	middlewares []MiddlewareFunc
 }
 
 func Init() *ApiClients {
@@ -51,6 +50,23 @@ func (a *ApiClients) WithContext(ctx context.Context) *ApiClients {
 func (a *ApiClients) WithProxy(proxy string) *ApiClients {
 	a.proxy = proxy
 	return a
+}
+
+// AddMiddleware 添加中间件
+func (a *ApiClients) Use(middlewares ...MiddlewareFunc) *ApiClients {
+	a.middlewares = append(a.middlewares, middlewares...)
+	return a
+}
+
+// ClearMiddlewares 清空所有中间件
+func (a *ApiClients) ClearMiddlewares() *ApiClients {
+	a.middlewares = nil
+	return a
+}
+
+// GetMiddlewares 获取所有中间件
+func (a *ApiClients) GetMiddlewares() []MiddlewareFunc {
+	return a.middlewares
 }
 
 func (a *ApiClients) Call(id *ApiId, op *Options) error {
@@ -114,9 +130,13 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	id.Request.ApiId = id.Name
 	id.Request.InitFromApiClient(id.Client)
 
-	err = api.UseContext(a.ctx)
-	if err != nil {
-		return nil, err
+	ctx := context.Background()
+	if a.ctx != nil {
+		ctx = a.ctx
+		err = api.UseContext(a.ctx)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Merge query parameters
@@ -157,68 +177,98 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 		return nil, err
 	}
 
-	var apiAddress = id.Request.Url + id.Request.Path
-	var client *dataflow.DataFlow
-	switch id.Request.HttpMethod {
-	case POST:
-		client = gout.POST(apiAddress)
-	case DELETE:
-		client = gout.DELETE(apiAddress)
-	case HEAD:
-		client = gout.HEAD(apiAddress)
-	case OPTIONS:
-		client = gout.OPTIONS(apiAddress)
-	case PATCH:
-		client = gout.OPTIONS(apiAddress)
-	default:
-		client = gout.GET(apiAddress)
-	}
-
+	// 创建标准库客户端
+	client := NewStdlibClient()
 	if a.proxy != "" {
 		client.SetProxy(a.proxy)
 	}
 
-	if id.Request.Debug || op.Debug {
-		client.Debug(true)
+	// 设置中间件上下文信息
+	client.SetContextInfo(id, client)
+
+	// 添加中间件
+	for _, middleware := range a.middlewares {
+		client.AddMiddleware(middleware)
 	}
 
-	if id.Request.Form != nil {
-		client.SetForm(id.Request.Form)
-	} else if id.Request.WWWForm != nil {
-		client.SetWWWForm(id.Request.WWWForm)
-	} else if id.Request.PostBody != nil {
-		client.SetJSON(id.Request.PostBody)
+	// 检查是否需要启用调试模式
+	if id.Request.Debug || op.Debug || api.Debug() {
+		client.SetDebug(true)
+		// 自动添加调试中间件
+		client.AddMiddleware(NewDebugMiddleware())
 	}
 
-	if id.Request.Query != nil {
-		client.SetQuery(id.Request.Query)
-	}
-
+	// 设置请求头
 	if id.Request.Header != nil {
-		if op.UseRawHeader {
-			client.NoAutoContentType()
-			client.SetHeaderRaw(id.Request.Header)
+		headers := make(map[string]string)
+		for k, v := range id.Request.Header {
+			headers[k] = fmt.Sprintf("%v", v)
+		}
+		client.SetHeaders(headers)
+	}
+
+	// 准备请求数据
+	var requestData *SetDataRequest
+	if id.Request.Form != nil {
+		requestData = NewFormData(convertToStringMap(id.Request.Form))
+	} else if id.Request.WWWForm != nil {
+		if wwwForm, ok := id.Request.WWWForm.(url.Values); ok {
+			requestData = NewWWWFormData(wwwForm)
 		} else {
-			client.SetHeader(id.Request.Header)
+			requestData = NewWWWFormData(convertToURLValues(id.Request.WWWForm))
+		}
+	} else if id.Request.PostBody != nil {
+		requestData = NewJSONData(id.Request.PostBody)
+	}
+
+	// 调用SetData接口
+	if requestData != nil {
+		err = id.Client.SetData(requestData)
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	err = id.Client.SetData(client)
+	// 构建完整URL
+	apiAddress := id.Request.Url + id.Request.Path
+
+	// 执行HTTP请求
+	var response *http.Response
+	switch id.Request.HttpMethod {
+	case POST:
+		response, err = client.POST(ctx, apiAddress, requestData, id.Request.Query)
+	case DELETE:
+		response, err = client.DELETE(ctx, apiAddress, id.Request.Query)
+	case HEAD:
+		response, err = client.DoRequest(ctx, "HEAD", apiAddress, nil, id.Request.Query)
+	case OPTIONS:
+		response, err = client.DoRequest(ctx, "OPTIONS", apiAddress, nil, id.Request.Query)
+	case PATCH:
+		response, err = client.PATCH(ctx, apiAddress, requestData, id.Request.Query)
+	case PUT:
+		response, err = client.PUT(ctx, apiAddress, requestData, id.Request.Query)
+	default:
+		response, err = client.GET(ctx, apiAddress, id.Request.Query)
+	}
+
 	if err != nil {
 		return nil, err
 	}
+	defer response.Body.Close()
 
-	id.Response = &ResponseData{}
+	// 初始化响应数据
+	id.Response = &ResponseData{
+		HttpStatus: response.StatusCode,
+		Header:     make(http.Header),
+	}
+
+	// 复制响应头
+	for k, v := range response.Header {
+		id.Response.Header[k] = v
+	}
+
+	// 处理流式响应
 	if id.Stream {
-		response, err2 := client.Code(&id.Response.HttpStatus).
-			BindHeader(&id.Response.Header).Response()
-
-		if err2 != nil {
-			return nil, err2
-		}
-
-		defer response.Body.Close()
-
 		// 处理 text/event-stream
 		contentType := response.Header.Get("Content-Type")
 		if !strings.Contains(contentType, "text/event-stream") {
@@ -226,7 +276,6 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 			if err != nil {
 				return nil, err
 			}
-
 			return nil, fmt.Errorf("%s", string(bodyData))
 		}
 
@@ -246,12 +295,14 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 		return id.Response, nil
 	}
 
-	err = client.Code(&id.Response.HttpStatus).
-		BindHeader(&id.Response.Header).BindBody(&id.Response.Data).Do()
+	// 读取响应体
+	bodyData, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	// 处理HTTP状态错误
+	id.Response.Data = bodyData
 	if id.Response.HttpStatus != http.StatusOK {
 		err = api.OnHttpStatusError(id.Response.HttpStatus, id.Response.Data)
 		if err != nil {
@@ -259,10 +310,51 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 		}
 	}
 
+	// 处理响应数据
 	responseData, err := api.OnResponse(id.Response.Data)
 	if err != nil {
 		return nil, err
 	}
 
 	return responseData, nil
+}
+
+// 辅助函数：转换为字符串映射
+func convertToStringMap(data interface{}) map[string]string {
+	result := make(map[string]string)
+	switch v := data.(type) {
+	case map[string]string:
+		return v
+	case map[string]interface{}:
+		for k, val := range v {
+			result[k] = fmt.Sprintf("%v", val)
+		}
+	case Params:
+		for k, val := range v {
+			result[k] = fmt.Sprintf("%v", val)
+		}
+	}
+	return result
+}
+
+// 辅助函数：转换为URL Values
+func convertToURLValues(data interface{}) url.Values {
+	result := make(url.Values)
+	switch v := data.(type) {
+	case url.Values:
+		return v
+	case map[string]string:
+		for k, val := range v {
+			result.Set(k, val)
+		}
+	case map[string]interface{}:
+		for k, val := range v {
+			result.Set(k, fmt.Sprintf("%v", val))
+		}
+	case Params:
+		for k, val := range v {
+			result.Set(k, fmt.Sprintf("%v", val))
+		}
+	}
+	return result
 }
