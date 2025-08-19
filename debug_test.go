@@ -13,17 +13,17 @@ import (
 func TestDebugFeature(t *testing.T) {
 	// 简单测试调试模式的启用
 	client := NewStdlibClient()
-	
+
 	// 测试调试模式设置
 	if client.debug {
 		t.Error("Debug should be false by default")
 	}
-	
+
 	client.SetDebug(true)
 	if !client.debug {
 		t.Error("Debug should be true after SetDebug(true)")
 	}
-	
+
 	client.SetDebug(false)
 	if client.debug {
 		t.Error("Debug should be false after SetDebug(false)")
@@ -50,7 +50,7 @@ func TestStdlibClientDebug(t *testing.T) {
 	})
 
 	// 创建测试数据
-	jsonData := NewJSONData(map[string]interface{}{
+	jsonData := NewJSONData(map[string]any{
 		"test":      "debug",
 		"timestamp": time.Now().Unix(),
 	})
@@ -134,13 +134,13 @@ func (t *TestDebugApi) Query() url.Values {
 
 func (t *TestDebugApi) Headers() Params {
 	return Params{
-		"X-Debug-Test": "true",
+		"X-Debug-Test":  "true",
 		"X-API-Version": "1.0",
 	}
 }
 
 func (t *TestDebugApi) PostBody() any {
-	return map[string]interface{}{
+	return map[string]any{
 		"debug":     true,
 		"test_data": "debug api test",
 		"timestamp": time.Now().Unix(),

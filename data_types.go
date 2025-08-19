@@ -21,15 +21,15 @@ const (
 
 // SetDataRequest 统一的数据设置请求结构
 type SetDataRequest struct {
-	Type        DataType               `json:"type"`
-	Content     interface{}            `json:"content"`
-	Headers     map[string]string      `json:"headers,omitempty"`     // 额外的请求头
-	ContentType string                 `json:"content_type,omitempty"` // 自定义Content-Type
-	Encoding    string                 `json:"encoding,omitempty"`     // 编码方式
+	Type        DataType          `json:"type"`
+	Content     any               `json:"content"`
+	Headers     map[string]string `json:"headers,omitempty"`      // 额外的请求头
+	ContentType string            `json:"content_type,omitempty"` // 自定义Content-Type
+	Encoding    string            `json:"encoding,omitempty"`     // 编码方式
 }
 
 // NewSetDataRequest 创建新的数据设置请求
-func NewSetDataRequest(dataType DataType, content interface{}) *SetDataRequest {
+func NewSetDataRequest(dataType DataType, content any) *SetDataRequest {
 	return &SetDataRequest{
 		Type:    dataType,
 		Content: content,
@@ -60,7 +60,7 @@ func (rd *SetDataRequest) WithEncoding(encoding string) *SetDataRequest {
 // 便捷构造函数
 
 // NewJSONData 创建JSON数据
-func NewJSONData(data interface{}) *SetDataRequest {
+func NewJSONData(data any) *SetDataRequest {
 	return NewSetDataRequest(DataTypeJSON, data)
 }
 
@@ -90,7 +90,7 @@ func NewReaderData(reader io.Reader) *SetDataRequest {
 }
 
 // NewXMLData 创建XML数据
-func NewXMLData(data interface{}) *SetDataRequest {
+func NewXMLData(data any) *SetDataRequest {
 	return NewSetDataRequest(DataTypeXML, data)
 }
 

@@ -13,9 +13,9 @@ func TestJSONFormatting(t *testing.T) {
 	// 创建测试服务器，返回JSON响应
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		response := map[string]interface{}{
+		response := map[string]any{
 			"status": "success",
-			"data": map[string]interface{}{
+			"data": map[string]any{
 				"id":   123,
 				"name": "Test User",
 				"tags": []string{"tag1", "tag2"},
@@ -31,10 +31,10 @@ func TestJSONFormatting(t *testing.T) {
 	client.AddMiddleware(NewDebugMiddleware())
 
 	// 发送JSON请求
-	jsonData := map[string]interface{}{
+	jsonData := map[string]any{
 		"username": "testuser",
 		"email":    "test@example.com",
-		"profile": map[string]interface{}{
+		"profile": map[string]any{
 			"age":     25,
 			"country": "US",
 		},

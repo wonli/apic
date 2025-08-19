@@ -320,12 +320,12 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 }
 
 // 辅助函数：转换为字符串映射
-func convertToStringMap(data interface{}) map[string]string {
+func convertToStringMap(data any) map[string]string {
 	result := make(map[string]string)
 	switch v := data.(type) {
 	case map[string]string:
 		return v
-	case map[string]interface{}:
+	case map[string]any:
 		for k, val := range v {
 			result[k] = fmt.Sprintf("%v", val)
 		}
@@ -338,7 +338,7 @@ func convertToStringMap(data interface{}) map[string]string {
 }
 
 // 辅助函数：转换为URL Values
-func convertToURLValues(data interface{}) url.Values {
+func convertToURLValues(data any) url.Values {
 	result := make(url.Values)
 	switch v := data.(type) {
 	case url.Values:
@@ -347,7 +347,7 @@ func convertToURLValues(data interface{}) url.Values {
 		for k, val := range v {
 			result.Set(k, val)
 		}
-	case map[string]interface{}:
+	case map[string]any:
 		for k, val := range v {
 			result.Set(k, fmt.Sprintf("%v", val))
 		}

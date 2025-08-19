@@ -39,7 +39,7 @@ func TestRetryMiddleware_Success(t *testing.T) {
 // TestRetryMiddleware_RetryOnServerError 测试服务器错误时重试
 func TestRetryMiddleware_RetryOnServerError(t *testing.T) {
 	attempts := 0
-	
+
 	// 创建测试服务器，前2次返回500，第3次返回200
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -87,7 +87,7 @@ func TestRetryMiddleware_RetryOnServerError(t *testing.T) {
 // TestRetryMiddleware_MaxRetriesExceeded 测试超过最大重试次数
 func TestRetryMiddleware_MaxRetriesExceeded(t *testing.T) {
 	attempts := 0
-	
+
 	// 创建测试服务器（总是返回错误）
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -130,7 +130,7 @@ func TestRetryMiddleware_MaxRetriesExceeded(t *testing.T) {
 func TestRetryMiddleware_WithOptions(t *testing.T) {
 	attempts := 0
 	retryCallbacks := 0
-	
+
 	// 创建测试服务器
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -177,7 +177,7 @@ func TestRetryMiddleware_WithOptions(t *testing.T) {
 // TestRetryMiddleware_CustomRetryCondition 测试自定义重试条件
 func TestRetryMiddleware_CustomRetryCondition(t *testing.T) {
 	attempts := 0
-	
+
 	// 创建测试服务器
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
@@ -220,15 +220,15 @@ func TestRetryMiddleware_CustomRetryCondition(t *testing.T) {
 func TestRetryMiddleware_WithPOSTData(t *testing.T) {
 	attempts := 0
 	receivedBodies := []string{}
-	
+
 	// 创建测试服务器
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		attempts++
-		
+
 		// 读取请求体
 		body, _ := io.ReadAll(r.Body)
 		receivedBodies = append(receivedBodies, string(body))
-		
+
 		if attempts < 2 {
 			w.WriteHeader(http.StatusInternalServerError)
 		} else {
@@ -246,7 +246,7 @@ func TestRetryMiddleware_WithPOSTData(t *testing.T) {
 	))
 
 	// 创建POST数据
-	data := NewJSONData(map[string]interface{}{
+	data := NewJSONData(map[string]any{
 		"message": "test data",
 		"id":      123,
 	})

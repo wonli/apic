@@ -12,9 +12,9 @@ import (
 // 测试新的SetData接口
 func TestSetDataInterface(t *testing.T) {
 	api := &Apic{}
-	
+
 	// 测试JSON数据
-	jsonData := map[string]interface{}{
+	jsonData := map[string]any{
 		"name": "test",
 		"age":  25,
 	}
@@ -22,7 +22,7 @@ func TestSetDataInterface(t *testing.T) {
 	if err != nil {
 		t.Errorf("SetData with JSON failed: %v", err)
 	}
-	
+
 	// 测试Form数据
 	formData := map[string]string{
 		"username": "testuser",
@@ -32,7 +32,7 @@ func TestSetDataInterface(t *testing.T) {
 	if err != nil {
 		t.Errorf("SetData with Form failed: %v", err)
 	}
-	
+
 	// 测试WWWForm数据
 	wwwFormData := url.Values{}
 	wwwFormData.Set("key1", "value1")
@@ -41,7 +41,7 @@ func TestSetDataInterface(t *testing.T) {
 	if err != nil {
 		t.Errorf("SetData with WWWForm failed: %v", err)
 	}
-	
+
 	// 测试Query数据
 	queryData := url.Values{}
 	queryData.Set("page", "1")
@@ -50,7 +50,7 @@ func TestSetDataInterface(t *testing.T) {
 	if err != nil {
 		t.Errorf("SetData with Query failed: %v", err)
 	}
-	
+
 	// 测试Header数据
 	headerData := map[string]string{
 		"Authorization": "Bearer token123",
@@ -65,9 +65,9 @@ func TestSetDataInterface(t *testing.T) {
 // 测试向后兼容的方法
 func TestBackwardCompatibility(t *testing.T) {
 	api := &Apic{}
-	
+
 	// 测试SetJSON
-	jsonData := map[string]interface{}{
+	jsonData := map[string]any{
 		"name": "test",
 		"age":  25,
 	}
@@ -75,7 +75,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	if result == nil {
 		t.Error("SetJSON should return Api interface")
 	}
-	
+
 	// 测试SetForm
 	formData := map[string]string{
 		"username": "testuser",
@@ -85,7 +85,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	if result == nil {
 		t.Error("SetForm should return Api interface")
 	}
-	
+
 	// 测试SetWWWForm
 	wwwFormData := url.Values{}
 	wwwFormData.Set("key1", "value1")
@@ -93,7 +93,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	if result == nil {
 		t.Error("SetWWWForm should return Api interface")
 	}
-	
+
 	// 测试SetQuery
 	queryData := url.Values{}
 	queryData.Set("page", "1")
@@ -101,7 +101,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	if result == nil {
 		t.Error("SetQuery should return Api interface")
 	}
-	
+
 	// 测试SetHeader
 	headerData := map[string]string{
 		"Authorization": "Bearer token123",
@@ -110,7 +110,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	if result == nil {
 		t.Error("SetHeader should return Api interface")
 	}
-	
+
 	// 测试链式调用
 	result = api.SetJSON(jsonData).SetHeader(headerData).SetQuery(queryData)
 	if result == nil {
@@ -130,7 +130,7 @@ func TestProxySettings(t *testing.T) {
 func TestContext(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	client := Init().WithContext(ctx)
 	if client.ctx != ctx {
 		t.Error("Context should be set correctly")
@@ -140,7 +140,7 @@ func TestContext(t *testing.T) {
 // 测试数据类型转换函数
 func TestDataConversion(t *testing.T) {
 	// 测试convertToStringMap
-	testData := map[string]interface{}{
+	testData := map[string]any{
 		"key1": "value1",
 		"key2": 123,
 		"key3": true,
@@ -155,7 +155,7 @@ func TestDataConversion(t *testing.T) {
 	if result["key3"] != "true" {
 		t.Error("Boolean conversion failed")
 	}
-	
+
 	// 测试convertToURLValues
 	urlResult := convertToURLValues(testData)
 	if urlResult.Get("key1") != "value1" {
@@ -172,19 +172,19 @@ func TestHttpClientBasic(t *testing.T) {
 		w.Write([]byte(`{"message": "success", "method": "` + r.Method + `"}`))
 	}))
 	defer server.Close()
-	
+
 	// 测试标准库客户端
 	client := NewStdlibClient()
 	if client == nil {
 		t.Error("StdlibClient should be created successfully")
 	}
-	
+
 	// 测试设置代理
 	client.SetProxy("http://proxy.example.com:8080")
-	
+
 	// 测试设置调试模式
 	client.SetDebug(true)
-	
+
 	// 测试设置请求头
 	headers := map[string]string{
 		"User-Agent": "test-client",
@@ -195,11 +195,11 @@ func TestHttpClientBasic(t *testing.T) {
 // 基准测试
 func BenchmarkSetDataJSON(b *testing.B) {
 	api := &Apic{}
-	jsonData := map[string]interface{}{
+	jsonData := map[string]any{
 		"name": "test",
 		"age":  25,
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		api.SetData(NewJSONData(jsonData))
@@ -208,11 +208,11 @@ func BenchmarkSetDataJSON(b *testing.B) {
 
 func BenchmarkSetJSONBackwardCompatible(b *testing.B) {
 	api := &Apic{}
-	jsonData := map[string]interface{}{
+	jsonData := map[string]any{
 		"name": "test",
 		"age":  25,
 	}
-	
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		api.SetJSON(jsonData)
@@ -249,12 +249,12 @@ func TestSetDataRequest(t *testing.T) {
 	if req.Type != DataTypeJSON {
 		t.Error("Type should be DataTypeJSON")
 	}
-	
+
 	// 测试链式调用
 	req = req.WithHeaders(map[string]string{"Authorization": "Bearer token"})
 	req = req.WithContentType("application/json")
 	req = req.WithEncoding("utf-8")
-	
+
 	if req.ContentType != "application/json" {
 		t.Error("ContentType should be set")
 	}

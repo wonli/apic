@@ -117,7 +117,7 @@ func (c *StdlibClient) prepareRequestBody(data *SetDataRequest) (io.Reader, stri
 			for k, val := range v {
 				formData.Set(k, val)
 			}
-		case map[string]interface{}:
+		case map[string]any:
 			formData = make(url.Values)
 			for k, val := range v {
 				formData.Set(k, fmt.Sprintf("%v", val))
@@ -279,7 +279,7 @@ func (c *StdlibClient) executeMiddlewareChainWithContext(req *http.Request, id *
 	// 复制中间件列表
 	middlewareFuncs := make([]MiddlewareFunc, len(c.middlewares))
 	copy(middlewareFuncs, c.middlewares)
-	
+
 	// 添加实际的HTTP请求处理函数
 	middlewareFuncs = append(middlewareFuncs, func(ctx *Context) {
 		// 执行HTTP请求
@@ -287,7 +287,7 @@ func (c *StdlibClient) executeMiddlewareChainWithContext(req *http.Request, id *
 		// 立即设置响应到上下文中
 		ctx.Response = resp
 	})
-	
+
 	// 创建中间件上下文
 	ctx := &Context{
 		Request:    req,
@@ -297,9 +297,9 @@ func (c *StdlibClient) executeMiddlewareChainWithContext(req *http.Request, id *
 		Id:         id,
 		HttpClient: httpClient,
 	}
-	
+
 	// 开始执行中间件链
 	ctx.Next()
-	
+
 	return resp, err
 }

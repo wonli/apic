@@ -108,7 +108,7 @@ func (a *Apic) AnyToParams(d any) Params {
 
 // SetJSON 设置JSON数据 - 已废弃
 // Deprecated: 使用SetData(NewJSONData(data))替代
-func (a *Apic) SetJSON(data interface{}) Api {
+func (a *Apic) SetJSON(data any) Api {
 	// 转换为新的SetData调用
 	a.SetData(NewJSONData(data))
 	return a
@@ -116,7 +116,7 @@ func (a *Apic) SetJSON(data interface{}) Api {
 
 // SetForm 设置表单数据 - 已废弃
 // Deprecated: 使用SetData(NewFormData(data))替代
-func (a *Apic) SetForm(data interface{}) Api {
+func (a *Apic) SetForm(data any) Api {
 	// 转换为新的SetData调用
 	if formData, ok := data.(map[string]string); ok {
 		a.SetData(NewFormData(formData))
@@ -129,7 +129,7 @@ func (a *Apic) SetForm(data interface{}) Api {
 
 // SetWWWForm 设置WWW表单数据 - 已废弃
 // Deprecated: 使用SetData(NewWWWFormData(data))替代
-func (a *Apic) SetWWWForm(data interface{}) Api {
+func (a *Apic) SetWWWForm(data any) Api {
 	// 转换为新的SetData调用
 	if urlValues, ok := data.(url.Values); ok {
 		a.SetData(NewWWWFormData(urlValues))
@@ -142,7 +142,7 @@ func (a *Apic) SetWWWForm(data interface{}) Api {
 
 // SetQuery 设置查询参数 - 已废弃
 // Deprecated: 使用SetData(NewQueryData(data))替代
-func (a *Apic) SetQuery(data interface{}) Api {
+func (a *Apic) SetQuery(data any) Api {
 	// 转换为新的SetData调用
 	if urlValues, ok := data.(url.Values); ok {
 		a.SetData(NewQueryData(urlValues))
@@ -155,7 +155,7 @@ func (a *Apic) SetQuery(data interface{}) Api {
 
 // SetHeader 设置请求头 - 已废弃
 // Deprecated: 使用SetData(NewHeaderData(data))替代
-func (a *Apic) SetHeader(data interface{}) Api {
+func (a *Apic) SetHeader(data any) Api {
 	// 转换为新的SetData调用
 	if headers, ok := data.(map[string]string); ok {
 		a.SetData(NewHeaderData(headers))
@@ -168,7 +168,7 @@ func (a *Apic) SetHeader(data interface{}) Api {
 
 // SetHeaderRaw 设置原始请求头 - 已废弃
 // Deprecated: 使用SetData(NewHeaderData(data))替代
-func (a *Apic) SetHeaderRaw(data interface{}) Api {
+func (a *Apic) SetHeaderRaw(data any) Api {
 	// 与SetHeader相同的实现
 	return a.SetHeader(data)
 }

@@ -26,12 +26,12 @@ type Api interface {
 	ReceiveEvent(data string)                      // 注册收到事件时的处理方法
 
 	// 向后兼容的方法 - 已废弃，建议使用SetData
-	SetJSON(data interface{}) Api      // Deprecated: 使用SetData(NewJSONData(data))替代
-	SetForm(data interface{}) Api      // Deprecated: 使用SetData(NewFormData(data))替代
-	SetWWWForm(data interface{}) Api   // Deprecated: 使用SetData(NewWWWFormData(data))替代
-	SetQuery(data interface{}) Api     // Deprecated: 使用SetData(NewQueryData(data))替代
-	SetHeader(data interface{}) Api    // Deprecated: 使用SetData(NewHeaderData(data))替代
-	SetHeaderRaw(data interface{}) Api // Deprecated: 使用SetData(NewHeaderData(data))替代
-	NoAutoContentType() Api            // Deprecated: 在SetData中设置ContentType
-	SetProxy(proxy string) Api         // Deprecated: 使用ApiClients.WithProxy()替代
+	SetJSON(data any) Api      // Deprecated: 使用SetData(NewJSONData(data))替代
+	SetForm(data any) Api      // Deprecated: 使用SetData(NewFormData(data))替代
+	SetWWWForm(data any) Api   // Deprecated: 使用SetData(NewWWWFormData(data))替代
+	SetQuery(data any) Api     // Deprecated: 使用SetData(NewQueryData(data))替代
+	SetHeader(data any) Api    // Deprecated: 使用SetData(NewHeaderData(data))替代
+	SetHeaderRaw(data any) Api // Deprecated: 使用SetData(NewHeaderData(data))替代
+	NoAutoContentType() Api    // Deprecated: 在SetData中设置ContentType
+	SetProxy(proxy string) Api // Deprecated: 使用ApiClients.WithProxy()替代
 }
