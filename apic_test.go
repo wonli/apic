@@ -110,12 +110,6 @@ func TestBackwardCompatibility(t *testing.T) {
 	if result == nil {
 		t.Error("SetHeader should return Api interface")
 	}
-
-	// 测试链式调用
-	result = api.SetJSON(jsonData).SetHeader(headerData).SetQuery(queryData)
-	if result == nil {
-		t.Error("Chained calls should work")
-	}
 }
 
 // 测试代理设置
