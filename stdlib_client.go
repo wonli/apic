@@ -271,6 +271,25 @@ func (c *StdlibClient) executeMiddlewareChain(req *http.Request) (*http.Response
 	return c.executeMiddlewareChainWithContext(req, c.contextId, c.contextHttpClient)
 }
 
+// Reset 重置客户端状态，用于对象池复用
+func (c *StdlibClient) Reset() *StdlibClient {
+	// 重置代理设置
+	c.proxy = ""
+	// 重置调试模式
+	c.debug = false
+	// 清空自定义头部
+	c.headers = make(map[string]string)
+	// 清空中间件
+	c.middlewares = make([]MiddlewareFunc, 0)
+	// 清空上下文信息
+	c.contextId = nil
+	c.contextHttpClient = nil
+	// 重置HTTP客户端的Transport（清除代理设置）
+	// 注意：保持默认的Transport，不要重置为nil或新的Transport
+	// 这样可以避免连接问题
+	return c
+}
+
 // executeMiddlewareChainWithContext 执行中间件链，支持传入ApiId和HttpClient
 func (c *StdlibClient) executeMiddlewareChainWithContext(req *http.Request, id *ApiId, httpClient *StdlibClient) (*http.Response, error) {
 	var resp *http.Response

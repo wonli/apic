@@ -156,7 +156,53 @@ func (t *TestDebugApi) Debug() bool {
 }
 
 func (t *TestDebugApi) OnResponse(resp []byte) (*ResponseData, error) {
-	return &ResponseData{
-		Data: resp,
-	}, nil
+	return &ResponseData{Data: resp}, nil
+}
+
+func TestSimpleHTTPRequest(t *testing.T) {
+	// 创建测试服务器
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"message": "success"}`))
+	}))
+	defer server.Close()
+
+	// 创建标准HTTP客户端
+	client := &http.Client{}
+	resp, err := client.Get(server.URL)
+	if err != nil {
+		t.Fatalf("HTTP request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	t.Logf("Standard HTTP client - Status: %d", resp.StatusCode)
+	if resp.StatusCode != 200 {
+		t.Errorf("Expected status 200, got %d", resp.StatusCode)
+	}
+
+	// 测试StdlibClient
+	stdlibClient := NewStdlibClient()
+	stdlibResp, err := stdlibClient.GET(context.Background(), server.URL, nil)
+	if err != nil {
+		t.Fatalf("StdlibClient request failed: %v", err)
+	}
+	defer stdlibResp.Body.Close()
+
+	t.Logf("StdlibClient - Status: %d", stdlibResp.StatusCode)
+	if stdlibResp.StatusCode != 200 {
+		t.Errorf("Expected status 200, got %d", stdlibResp.StatusCode)
+	}
+
+	// 测试Reset后的StdlibClient
+	stdlibClient.Reset()
+	stdlibResp2, err := stdlibClient.GET(context.Background(), server.URL, nil)
+	if err != nil {
+		t.Fatalf("Reset StdlibClient request failed: %v", err)
+	}
+	defer stdlibResp2.Body.Close()
+
+	t.Logf("Reset StdlibClient - Status: %d", stdlibResp2.StatusCode)
+	if stdlibResp2.StatusCode != 200 {
+		t.Errorf("Expected status 200, got %d", stdlibResp2.StatusCode)
+	}
 }

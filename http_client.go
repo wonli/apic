@@ -16,24 +16,66 @@ var once sync.Once
 
 // ApiClients api clients list
 type ApiClients struct {
-	ctx         context.Context
-	proxy       string
-	named       map[string]*ApiId
-	middlewares []MiddlewareFunc
+	ctx           context.Context
+	proxy         string
+	named         map[string]*ApiId
+	middlewares   []MiddlewareFunc
+	clientFactory *ClientFactory
+	mu            sync.RWMutex
 }
 
+// Init 返回全局单例实例，适用于:
+// - 对外提供API服务
+// - 全局配置相对固定的场景
+// - 需要在整个应用中共享API配置
+// 注意: 全局单例的配置修改会影响所有使用者
 func Init() *ApiClients {
 	once.Do(func() {
 		Apis = &ApiClients{
-			ctx:   context.Background(),
-			named: map[string]*ApiId{},
+			ctx:           context.Background(),
+			named:         map[string]*ApiId{},
+			clientFactory: NewClientFactory(20),
 		}
 	})
 
 	return Apis
 }
 
+// NewApiClient 创建新的独立实例，适用于:
+// - 多租户场景
+// - 测试环境
+// - 不同业务模块需要不同配置
+// - 需要配置隔离的场景
+func NewApiClient() *ApiClients {
+	return &ApiClients{
+		ctx:           context.Background(),
+		named:         map[string]*ApiId{},
+		clientFactory: NewClientFactory(20),
+	}
+}
+
+type ClientConfig struct {
+	MaxPoolSize    int
+	DefaultContext context.Context
+	DefaultProxy   string
+}
+
+func NewApiClientWithConfig(config *ClientConfig) *ApiClients {
+	if config == nil {
+		config = &ClientConfig{MaxPoolSize: 20}
+	}
+	return &ApiClients{
+		ctx:           config.DefaultContext,
+		proxy:         config.DefaultProxy,
+		named:         map[string]*ApiId{},
+		clientFactory: NewClientFactory(config.MaxPoolSize),
+	}
+}
+
 func (a *ApiClients) Named(api *ApiId) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
 	_, ok := a.named[api.Name]
 	if ok {
 		panic("ApiId registered multiple times")
@@ -69,6 +111,21 @@ func (a *ApiClients) GetMiddlewares() []MiddlewareFunc {
 	return a.middlewares
 }
 
+// GetClientFactoryStats 获取客户端工厂统计信息
+func (a *ApiClients) GetClientFactoryStats() *FactoryStats {
+	if a.clientFactory == nil {
+		return nil
+	}
+
+	return a.clientFactory.GetStats()
+}
+
+// SetClientFactoryMaxSize 设置客户端工厂最大池大小
+func (a *ApiClients) SetClientFactoryMaxSize(maxSize int) *ApiClients {
+	a.clientFactory = NewClientFactory(maxSize)
+	return a
+}
+
 func (a *ApiClients) Call(id *ApiId, op *Options) error {
 	_, err := a.getApiData(id, op)
 	if err != nil {
@@ -83,7 +140,10 @@ func (a *ApiClients) CallApi(id *ApiId, op *Options) (*ResponseData, error) {
 }
 
 func (a *ApiClients) CallNamed(name string, op *Options) (*ResponseData, error) {
+	a.mu.RLock()
 	id, ok := a.named[name]
+	a.mu.RUnlock()
+
 	if !ok {
 		return nil, fmt.Errorf("named api not registered")
 	}
@@ -177,8 +237,15 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 		return nil, err
 	}
 
-	// 创建标准库客户端
-	client := NewStdlibClient()
+	// 从客户端池获取客户端
+	client := a.clientFactory.AcquireClient()
+	defer a.clientFactory.ReleaseClient(client)
+
+	if client == nil {
+		return nil, fmt.Errorf("acquired client is nil")
+	}
+
+	// 配置客户端
 	if a.proxy != "" {
 		client.SetProxy(a.proxy)
 	}
@@ -252,8 +319,13 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("HTTP request failed: %w", err)
 	}
+
+	if response == nil {
+		return nil, fmt.Errorf("HTTP response is nil")
+	}
+
 	defer response.Body.Close()
 
 	// 初始化响应数据
@@ -314,6 +386,12 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	responseData, err := api.OnResponse(id.Response.Data)
 	if err != nil {
 		return nil, err
+	}
+
+	// 确保返回的ResponseData包含正确的HttpStatus
+	if responseData != nil {
+		responseData.HttpStatus = id.Response.HttpStatus
+		responseData.Header = id.Response.Header
 	}
 
 	return responseData, nil

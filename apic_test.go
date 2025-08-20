@@ -114,7 +114,13 @@ func TestBackwardCompatibility(t *testing.T) {
 
 // 测试代理设置
 func TestProxySettings(t *testing.T) {
-	client := Init().WithProxy("http://proxy.example.com:8080")
+	// 创建独立的 ApiClients 实例，避免污染全局状态
+	client := &ApiClients{
+		ctx:           context.Background(),
+		named:         make(map[string]*ApiId),
+		clientFactory: NewClientFactory(20),
+	}
+	client = client.WithProxy("http://proxy.example.com:8080")
 	if client.proxy != "http://proxy.example.com:8080" {
 		t.Error("Proxy should be set correctly")
 	}
@@ -125,7 +131,13 @@ func TestContext(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	client := Init().WithContext(ctx)
+	// 创建独立的 ApiClients 实例，避免污染全局状态
+	client := &ApiClients{
+		ctx:           context.Background(),
+		named:         make(map[string]*ApiId),
+		clientFactory: NewClientFactory(20),
+	}
+	client = client.WithContext(ctx)
 	if client.ctx != ctx {
 		t.Error("Context should be set correctly")
 	}
