@@ -77,11 +77,18 @@ func isJSONContent(contentType string) bool {
 }
 
 // formatJSON 格式化JSON字符串
+// 当JSON数据过长时，不进行格式化以避免输出过多内容
 func formatJSON(data []byte) string {
+	const maxJSONLength = 1000
+	if len(data) > maxJSONLength {
+		return string(data)
+	}
+
 	var prettyJSON bytes.Buffer
 	if err := json.Indent(&prettyJSON, data, "", "  "); err != nil {
-		return string(data) // 格式化失败时返回原始数据
+		return string(data)
 	}
+
 	return prettyJSON.String()
 }
 

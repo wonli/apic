@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 )
@@ -205,4 +206,31 @@ func TestSimpleHTTPRequest(t *testing.T) {
 	if stdlibResp2.StatusCode != 200 {
 		t.Errorf("Expected status 200, got %d", stdlibResp2.StatusCode)
 	}
+}
+
+// TestFormatJSONLimit 测试 JSON 长度限制功能
+func TestFormatJSONLimit(t *testing.T) {
+	// 测试短 JSON
+	shortJSON := []byte(`{"name":"test","value":123}`)
+	result := formatJSON(shortJSON)
+	if !strings.Contains(result, "name") {
+		t.Error("Short JSON should be formatted properly")
+	}
+
+	// 测试长 JSON (超过 1000 字符)
+	longData := strings.Repeat("a", 1200)
+	longJSON := []byte(`{"data":"` + longData + `"}`)
+	result = formatJSON(longJSON)
+
+	// 验证长JSON不被格式化，长度应该等于原始长度
+	if len(result) != len(longJSON) {
+		t.Errorf("Long JSON should not be formatted, expected length %d, got %d", len(longJSON), len(result))
+	}
+
+	// 验证内容就是原始JSON
+	if result != string(longJSON) {
+		t.Error("Long JSON should return original data without formatting")
+	}
+
+	t.Logf("Long JSON original length: %d, formatted length: %d", len(longJSON), len(result))
 }
