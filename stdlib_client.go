@@ -171,7 +171,7 @@ func (c *StdlibClient) prepareRequestBody(data *SetDataRequest) (io.Reader, stri
 // DoRequest 执行HTTP请求
 func (c *StdlibClient) DoRequest(ctx context.Context, method, url string, data *SetDataRequest, query url.Values) (*http.Response, error) {
 	// 处理查询参数
-	if query != nil && len(query) > 0 {
+	if len(query) > 0 {
 		if strings.Contains(url, "?") {
 			url += "&" + query.Encode()
 		} else {
