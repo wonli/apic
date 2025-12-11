@@ -182,6 +182,12 @@ func logResponse(resp *http.Response) {
 	// 输出空行分隔响应头和响应体
 	fmt.Printf("%s\n", colorize("> ", statusColor))
 
+	// SSE 等流式响应不读取正文，避免阻塞真正的流处理
+	if strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
+		fmt.Printf("%s\n", colorize("> [streaming body omitted for text/event-stream]", statusColor))
+		return
+	}
+
 	// 读取并打印响应体
 	if resp.Body != nil {
 		body, err := io.ReadAll(resp.Body)
@@ -194,7 +200,7 @@ func logResponse(resp *http.Response) {
 				lines := strings.Split(formattedJSON, "\n")
 				for _, line := range lines {
 					if line != "" {
-						fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s", line), ColorGreen))
+						fmt.Printf("%s\n", colorize(line, ColorGreen))
 					}
 				}
 			} else {
@@ -202,7 +208,7 @@ func logResponse(resp *http.Response) {
 				lines := strings.Split(string(body), "\n")
 				for _, line := range lines {
 					if line != "" || len(lines) == 1 {
-						fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s", line), ColorGreen))
+						fmt.Printf("%s\n", colorize(line, ColorGreen))
 					}
 				}
 			}
