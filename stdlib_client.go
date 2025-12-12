@@ -64,6 +64,14 @@ func (c *StdlibClient) SetDebug(debug bool) *StdlibClient {
 	return c
 }
 
+// SetTimeout 设置请求超时时间
+func (c *StdlibClient) SetTimeout(timeout time.Duration) *StdlibClient {
+	if c.client != nil {
+		c.client.Timeout = timeout
+	}
+	return c
+}
+
 // SetHeader 设置请求头
 func (c *StdlibClient) SetHeader(key, value string) *StdlibClient {
 	c.headers[key] = value

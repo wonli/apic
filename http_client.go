@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 )
 
 var Apis *ApiClients
@@ -248,6 +249,13 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	// 配置客户端
 	if a.proxy != "" {
 		client.SetProxy(a.proxy)
+	}
+
+	// 设置超时时间
+	if op.Timeout > 0 {
+		client.SetTimeout(op.Timeout)
+	} else if id.Stream {
+		client.SetTimeout(time.Minute * 15)
 	}
 
 	// 设置中间件上下文信息
