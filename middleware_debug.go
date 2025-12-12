@@ -25,7 +25,7 @@ func NewDebugMiddleware() MiddlewareFunc {
 
 		// 记录响应
 		if ctx.Response != nil {
-			logResponse(ctx.Response)
+			logResponse(ctx)
 		}
 
 		// 输出调试结束标记
@@ -139,7 +139,7 @@ func logRequest(req *http.Request) {
 					lines := strings.Split(formattedJSON, "\n")
 					for _, line := range lines {
 						if line != "" {
-							fmt.Printf("%s\n", colorize(fmt.Sprintf("< %s", line), ColorYellow))
+							fmt.Printf("%s\n", colorize(line, ColorYellow))
 						}
 					}
 				} else {
@@ -151,7 +151,12 @@ func logRequest(req *http.Request) {
 }
 
 // logResponse 记录响应详细信息
-func logResponse(resp *http.Response) {
+func logResponse(ctx *Context) {
+	resp := ctx.Response
+	if resp == nil {
+		return
+	}
+
 	// 根据状态码选择颜色
 	var statusColor string
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
@@ -182,9 +187,10 @@ func logResponse(resp *http.Response) {
 	// 输出空行分隔响应头和响应体
 	fmt.Printf("%s\n", colorize("> ", statusColor))
 
-	// SSE 等流式响应不读取正文，避免阻塞真正的流处理
-	if strings.Contains(strings.ToLower(resp.Header.Get("Content-Type")), "text/event-stream") {
-		fmt.Printf("%s\n", colorize("> [streaming body omitted for text/event-stream]", statusColor))
+	// 流式响应不读取正文，避免阻塞真正的流处理
+	// 优先使用 ApiId.Stream 标志判断，这是最准确的方式
+	if ctx.Id != nil && ctx.Id.Stream {
+		fmt.Printf("%s\n", colorize("> [streaming body omitted - stream mode enabled]", statusColor))
 		return
 	}
 
