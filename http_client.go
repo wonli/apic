@@ -349,6 +349,15 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 
 	// 处理流式响应
 	if id.Stream {
+		// 使用 defer 确保在所有退出路径都关闭 channel，避免 goroutine 泄漏
+		defer func() {
+			if client.debug && client.middlewareCtx != nil && client.middlewareCtx.StreamLogChan != nil {
+				close(client.middlewareCtx.StreamLogChan)
+				// 等待日志 goroutine 完成
+				<-client.middlewareCtx.StreamLogDone
+			}
+		}()
+
 		// 处理 text/event-stream
 		contentType := response.Header.Get("Content-Type")
 		if !strings.Contains(contentType, "text/event-stream") {
@@ -366,7 +375,20 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 				return nil, err
 			}
 
-			api.ReceiveEvent(strings.TrimSpace(line))
+			trimmedLine := strings.TrimSpace(line)
+
+			// 如果启用调试模式，异步发送日志数据（非阻塞）
+			if client.debug && client.middlewareCtx != nil && client.middlewareCtx.StreamLogChan != nil {
+				select {
+				case client.middlewareCtx.StreamLogChan <- trimmedLine:
+					// 成功发送
+				default:
+					// channel 满了，跳过（优先保证业务性能）
+				}
+			}
+
+			// 业务处理完全不受影响
+			api.ReceiveEvent(trimmedLine)
 			if err == io.EOF {
 				break
 			}

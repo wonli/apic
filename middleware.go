@@ -14,6 +14,10 @@ type Context struct {
 
 	Id         *ApiId
 	HttpClient *StdlibClient
+
+	// 新增：用于流式响应日志处理
+	StreamLogChan chan string   // 用于异步传递流式数据
+	StreamLogDone chan struct{} // 用于等待异步日志完成
 }
 
 // Next 调用链中的下一个中间件

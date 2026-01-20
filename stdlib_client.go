@@ -23,6 +23,7 @@ type StdlibClient struct {
 	// 中间件上下文信息
 	contextId         *ApiId
 	contextHttpClient *StdlibClient
+	middlewareCtx     *Context // 保存中间件执行时的Context引用
 }
 
 // NewStdlibClient 创建新的标准库HTTP客户端
@@ -292,6 +293,7 @@ func (c *StdlibClient) Reset() *StdlibClient {
 	// 清空上下文信息
 	c.contextId = nil
 	c.contextHttpClient = nil
+	c.middlewareCtx = nil
 	// 重置HTTP客户端的Transport（清除代理设置）
 	// 注意：保持默认的Transport，不要重置为nil或新的Transport
 	// 这样可以避免连接问题
@@ -324,6 +326,9 @@ func (c *StdlibClient) executeMiddlewareChainWithContext(req *http.Request, id *
 		Id:         id,
 		HttpClient: httpClient,
 	}
+
+	// 保存Context引用，供流式响应处理使用
+	c.middlewareCtx = ctx
 
 	// 开始执行中间件链
 	ctx.Next()

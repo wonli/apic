@@ -5,20 +5,36 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"os"
 	"strings"
+	"sync"
 )
+
+var logConfigOnce sync.Once
 
 // NewDebugMiddleware 创建新的调试中间件
 func NewDebugMiddleware() MiddlewareFunc {
+
+	// 只配置一次 log 包（线程安全）
+	logConfigOnce.Do(func() {
+		log.SetFlags(0)          // 去掉时间戳前缀
+		log.SetOutput(os.Stdout) // 输出到标准输出
+	})
+
 	return func(ctx *Context) {
 		// 输出调试开始标记
 		logDebugStart()
 
 		// 记录请求
 		logRequest(ctx.Request)
+
+		// 如果是流式请求，启动异步日志处理
+		if ctx.Id != nil && ctx.Id.Stream {
+			startStreamLogger(ctx)
+		}
 
 		// 调用下一个中间件
 		ctx.Next()
@@ -28,8 +44,11 @@ func NewDebugMiddleware() MiddlewareFunc {
 			logResponse(ctx)
 		}
 
-		// 输出调试结束标记
-		logDebugEnd()
+		// 对于流式请求，DEBUG END 会在流式数据完成后打印
+		// 对于普通请求，立即打印 DEBUG END
+		if ctx.Id == nil || !ctx.Id.Stream {
+			logDebugEnd()
+		}
 	}
 }
 
@@ -94,13 +113,13 @@ func formatJSON(data []byte) string {
 
 // logDebugStart 输出调试开始标记
 func logDebugStart() {
-	fmt.Printf("%s\n", colorize("---------- DEBUG START ----------", ColorCyan))
+	log.Print(colorize("---------- DEBUG START ----------", ColorCyan))
 }
 
 // logDebugEnd 输出调试结束标记
 func logDebugEnd() {
-	fmt.Printf("%s\n", colorize("---------- DEBUG END ----------", ColorCyan))
-	fmt.Println()
+	log.Print(colorize("---------- DEBUG END ----------", ColorCyan))
+	log.Print("") // 空行
 }
 
 // logRequest 记录请求详细信息
@@ -111,13 +130,13 @@ func logRequest(req *http.Request) {
 		protoVersion = req.Proto
 	}
 
-	fmt.Printf("%s\n", colorize(fmt.Sprintf("< %s %s %s", req.Method, req.URL.RequestURI(), protoVersion), ColorCyan))
-	fmt.Printf("%s\n", colorize(fmt.Sprintf("< Host: %s", req.URL.Host), ColorCyan))
+	log.Print(colorize(fmt.Sprintf("< %s %s %s", req.Method, req.URL.RequestURI(), protoVersion), ColorCyan))
+	log.Print(colorize(fmt.Sprintf("< Host: %s", req.URL.Host), ColorCyan))
 
 	// 输出请求头
 	for key, values := range req.Header {
 		for _, value := range values {
-			fmt.Printf("%s\n", colorize(fmt.Sprintf("< %s: %s", key, value), ColorBlue))
+			log.Print(colorize(fmt.Sprintf("< %s: %s", key, value), ColorBlue))
 		}
 	}
 
@@ -126,7 +145,7 @@ func logRequest(req *http.Request) {
 		// 读取请求体用于调试，但需要重新设置
 		body, err := httputil.DumpRequestOut(req, true)
 		if err == nil {
-			fmt.Printf("%s\n", colorize("< ", ColorCyan))
+			log.Print(colorize("< ", ColorCyan))
 			// 提取请求体部分
 			parts := strings.Split(string(body), "\r\n\r\n")
 			if len(parts) > 1 {
@@ -139,15 +158,57 @@ func logRequest(req *http.Request) {
 					lines := strings.Split(formattedJSON, "\n")
 					for _, line := range lines {
 						if line != "" {
-							fmt.Printf("%s\n", colorize(line, ColorYellow))
+							log.Print(colorize(line, ColorYellow))
 						}
 					}
 				} else {
-					fmt.Printf("%s\n", colorize(requestBody, ColorYellow))
+					log.Print(colorize(requestBody, ColorYellow))
 				}
 			}
 		}
 	}
+}
+
+// startStreamLogger 启动异步流式日志处理器
+func startStreamLogger(ctx *Context) {
+	// 防止重复启动
+	if ctx.StreamLogChan != nil {
+		return
+	}
+
+	// 创建 buffered channel，避免发送阻塞（缓冲 256 条消息）
+	ctx.StreamLogChan = make(chan string, 256)
+	ctx.StreamLogDone = make(chan struct{})
+
+	// 启动异步日志处理 goroutine
+	go func() {
+		// 确保 StreamLogDone 一定会被关闭
+		defer close(ctx.StreamLogDone)
+
+		// 使用 recover 防止 panic 导致 goroutine 泄漏
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("\n[ERROR] Stream logger panic: %v", r)
+			}
+		}()
+
+		eventCount := 0
+		for line := range ctx.StreamLogChan {
+			if line != "" {
+				eventCount++
+				// 实时打印流式数据
+				log.Print(colorize(line, ColorGreen))
+			}
+		}
+
+		// 所有数据接收完成后，显示统计和结束标记
+		if eventCount > 0 {
+			log.Print(colorize(fmt.Sprintf("> [Stream completed - received %d events]", eventCount), ColorCyan))
+		}
+
+		// 打印调试结束标记
+		logDebugEnd()
+	}()
 }
 
 // logResponse 记录响应详细信息
@@ -175,22 +236,22 @@ func logResponse(ctx *Context) {
 		protoVersion = resp.Proto
 	}
 
-	fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s %d %s", protoVersion, resp.StatusCode, http.StatusText(resp.StatusCode)), statusColor))
+	log.Print(colorize(fmt.Sprintf("> %s %d %s", protoVersion, resp.StatusCode, http.StatusText(resp.StatusCode)), statusColor))
 
 	// 输出响应头
 	for key, values := range resp.Header {
 		for _, value := range values {
-			fmt.Printf("%s\n", colorize(fmt.Sprintf("> %s: %s", key, value), ColorPurple))
+			log.Print(colorize(fmt.Sprintf("> %s: %s", key, value), ColorPurple))
 		}
 	}
 
 	// 输出空行分隔响应头和响应体
-	fmt.Printf("%s\n", colorize("> ", statusColor))
+	log.Print(colorize("> ", statusColor))
 
-	// 流式响应不读取正文，避免阻塞真正的流处理
-	// 优先使用 ApiId.Stream 标志判断，这是最准确的方式
+	// 流式响应处理
 	if ctx.Id != nil && ctx.Id.Stream {
-		fmt.Printf("%s\n", colorize("> [streaming body omitted - stream mode enabled]", statusColor))
+		// 流式响应的日志通过异步 goroutine 实时打印
+		// 这里只显示响应头后的空行
 		return
 	}
 
@@ -206,7 +267,7 @@ func logResponse(ctx *Context) {
 				lines := strings.Split(formattedJSON, "\n")
 				for _, line := range lines {
 					if line != "" {
-						fmt.Printf("%s\n", colorize(line, ColorGreen))
+						log.Print(colorize(line, ColorGreen))
 					}
 				}
 			} else {
@@ -214,7 +275,7 @@ func logResponse(ctx *Context) {
 				lines := strings.Split(string(body), "\n")
 				for _, line := range lines {
 					if line != "" || len(lines) == 1 {
-						fmt.Printf("%s\n", colorize(line, ColorGreen))
+						log.Print(colorize(line, ColorGreen))
 					}
 				}
 			}
