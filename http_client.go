@@ -358,16 +358,6 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 			}
 		}()
 
-		// 处理 text/event-stream
-		contentType := response.Header.Get("Content-Type")
-		if !strings.Contains(contentType, "text/event-stream") {
-			bodyData, err := io.ReadAll(response.Body)
-			if err != nil {
-				return nil, err
-			}
-			return nil, fmt.Errorf("%s", string(bodyData))
-		}
-
 		buf := bufio.NewReader(response.Body)
 		for {
 			line, err := buf.ReadString('\n')
