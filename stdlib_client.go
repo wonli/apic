@@ -13,6 +13,19 @@ import (
 	"time"
 )
 
+func newDefaultHTTPClient() *http.Client {
+	return &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// 允许最多20次重定向，避免"stopped after 10 redirects"错误
+			if len(via) >= 20 {
+				return http.ErrUseLastResponse
+			}
+			return nil
+		},
+	}
+}
+
 // StdlibClient 基于标准库的HTTP客户端
 type StdlibClient struct {
 	client      *http.Client
@@ -29,19 +42,24 @@ type StdlibClient struct {
 // NewStdlibClient 创建新的标准库HTTP客户端
 func NewStdlibClient() *StdlibClient {
 	c := &StdlibClient{
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				// 允许最多20次重定向，避免"stopped after 10 redirects"错误
-				if len(via) >= 20 {
-					return http.ErrUseLastResponse
-				}
-				return nil
-			},
-		},
+		client:      newDefaultHTTPClient(),
 		headers:     make(map[string]string),
 		middlewares: make([]MiddlewareFunc, 0),
 	}
+	return c
+}
+
+// SetHTTPClient 注入自定义 http.Client。
+func (c *StdlibClient) SetHTTPClient(client *http.Client) *StdlibClient {
+	if client != nil {
+		c.client = client
+	}
+	return c
+}
+
+// ResetHTTPClient 恢复到默认 http.Client。
+func (c *StdlibClient) ResetHTTPClient() *StdlibClient {
+	c.client = newDefaultHTTPClient()
 	return c
 }
 

@@ -19,6 +19,7 @@ var once sync.Once
 type ApiClients struct {
 	ctx           context.Context
 	proxy         string
+	httpClient    *http.Client
 	named         map[string]*ApiId
 	middlewares   []MiddlewareFunc
 	clientFactory *ClientFactory
@@ -93,6 +94,18 @@ func (a *ApiClients) WithContext(ctx context.Context) *ApiClients {
 func (a *ApiClients) WithProxy(proxy string) *ApiClients {
 	a.proxy = proxy
 	return a
+}
+
+func (a *ApiClients) WithHTTPClient(httpClient *http.Client) *ApiClients {
+	a.httpClient = httpClient
+	return a
+}
+
+func (a *ApiClients) HTTPClient() *http.Client {
+	if a.httpClient != nil {
+		return a.httpClient
+	}
+	return newDefaultHTTPClient()
 }
 
 // AddMiddleware 添加中间件
@@ -249,6 +262,11 @@ func (a *ApiClients) getApiData(id *ApiId, op *Options) (*ResponseData, error) {
 	// 配置客户端
 	if a.proxy != "" {
 		client.SetProxy(a.proxy)
+	}
+	if a.httpClient != nil {
+		client.SetHTTPClient(a.httpClient)
+	} else {
+		client.ResetHTTPClient()
 	}
 
 	// 设置超时时间
